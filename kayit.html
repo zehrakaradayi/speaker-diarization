@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ses Kayıt Stüdyosu</title>
+<style>
+  :root {
+    --bg: #f6f5f2; --card: #ffffff; --ink: #1d1d1f; --muted: #6b6b70; --line: #e4e2dc;
+    --accent: #6d28d9; --rec: #dc2626; --ok: #15803d; --warn: #b45309; --quote: #f1efe9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151517; --card: #1f1f22; --ink: #ececef; --muted: #9a9aa2; --line: #313136;
+      --accent: #a78bfa; --rec: #f87171; --ok: #4ade80; --warn: #fbbf24; --quote: #27272b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px;
+    display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; } }
+  header { grid-column: 1 / -1; }
+  h1 { margin: 0; font-size: 24px; }
+  h2 { margin: 0 0 12px; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .sub { color: var(--muted); margin: 4px 0 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+  label { display: block; font-weight: 600; margin: 0 0 6px; }
+  input, select { width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 10px; padding: 9px 11px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  @media (max-width: 520px) { .row { grid-template-columns: 1fr; } }
+  .hint { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .hint code { color: var(--ink); }
+  .plan { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 14px; }
+  .chip { background: var(--quote); border-radius: 999px; padding: 3px 11px; font-size: 13px; }
+  .texts { max-height: 300px; overflow: auto; background: var(--quote); border-radius: 10px;
+    padding: 4px 14px; font-size: 15px; line-height: 1.6; }
+  .texts h3 { font-size: 14px; margin: 12px 0 4px; }
+  .texts p { margin: 0 0 10px; }
+  .controls { display: flex; align-items: center; gap: 16px; margin: 18px 0 10px; flex-wrap: wrap; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 10px 16px; cursor: pointer;
+    background: var(--quote); color: var(--ink); }
+  button:disabled { opacity: .45; cursor: default; }
+  #recBtn { width: 76px; height: 76px; border-radius: 50%; background: var(--rec); color: #fff; padding: 0; font-size: 13px; }
+  #recBtn.on { animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--rec) 25%, transparent); } }
+  .primary { background: var(--accent); color: #fff; }
+  .timer { font: 600 30px/1 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .goal { font-size: 13px; color: var(--muted); }
+  .meter { height: 8px; background: var(--quote); border-radius: 4px; overflow: hidden; flex: 1; min-width: 120px; }
+  .meter div { height: 100%; width: 0; background: var(--ok); transition: width 60ms; }
+  .meter div.hot { background: var(--rec); }
+  #preview { display: none; margin-top: 10px; }
+  #preview audio { width: 100%; margin-bottom: 10px; }
+  .msg { margin-top: 10px; font-size: 14px; min-height: 1.5em; }
+  .msg.err { color: var(--rec); } .msg.ok { color: var(--ok); } .msg.warn { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.c { text-align: center; }
+  .y { color: var(--ok); } .n { color: var(--muted); } .bad { color: var(--rec); font-weight: 600; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Ses Kayıt Stüdyosu</h1>
+    <p class="sub">Laptop oturumlarını buradan kaydet; dosya doğrudan <code>dataset/&lt;isim&gt;/</code> klasörüne yazılır.</p>
+  </header>
+
+  <section class="card">
+    <h2>Yeni kayıt</h2>
+    <div class="row">
+      <div>
+        <label for="person">Kişi</label>
+        <input id="person" list="people" placeholder="ör. zehra" autocomplete="off">
+        <datalist id="people"></datalist>
+        <div class="hint" id="folder">Klasör adı demoda görünecek isim olur.</div>
+      </div>
+      <div>
+        <label for="target">Oturum</label>
+        <select id="target">
+          <option value="oturum2_laptop">Oturum 2 — laptop, uzak</option>
+          <option value="oturum3_laptop">Oturum 3 — laptop, orta</option>
+          <option value="ofis_laptop">Oda sesi — laptop, 30 sn</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="plan" id="plan"></div>
+    <div class="texts" id="texts"></div>
+
+    <div class="controls">
+      <button id="recBtn">Başlat</button>
+      <div>
+        <div class="timer" id="timer">0:00</div>
+        <div class="goal" id="goal"></div>
+      </div>
+      <div class="meter" title="Ses seviyesi"><div id="level"></div></div>
+    </div>
+
+    <div id="preview">
+      <audio id="player" controls></audio>
+      <button class="primary" id="saveBtn">Kaydet</button>
+      <button id="discardBtn">Sil, yeniden çek</button>
+    </div>
+    <div class="msg" id="msg"></div>
+  </section>
+
+  <section class="card">
+    <h2>Kontrol tablosu</h2>
+    <table>
+      <thead><tr><th>Kişi</th><th class="c">1</th><th class="c">2</th><th class="c">3</th><th class="c">4</th><th>Toplam</th></tr></thead>
+      <tbody id="tbody"><tr><td colspan="6" class="n">Henüz kayıt yok</td></tr></tbody>
+    </table>
+    <p class="note" id="room"></p>
+    <p class="note">Her kişinin 4 oturumu ve en az 8 dakika ham kaydı olmalı. Telefon kayıtlarını
+      (<code>oturum1_telefon.m4a</code>, <code>oturum4_telefon.m4a</code>, <code>oda_sesi/ofis_telefon.m4a</code>)
+      VS Code'a sürükleyince tablo onları da sayar.</p>
+  </section>
+</main>
+
+<script>
+const PLANS = {
+  oturum2_laptop: { chips: ["Laptop", "Normal ses", "Uzak: odanın öbür ucu", "Hedef 2–2,5 dk"], min: 120, max: 150,
+    texts: ["m5", "free2"] },
+  oturum3_laptop: { chips: ["Laptop", "Alçak ve sakin (fısıltı değil)", "Orta: kol mesafesi", "Hedef 2–2,5 dk"], min: 120, max: 150,
+    texts: ["m3", "m4"] },
+  ofis_laptop: { chips: ["Laptop", "Kimse konuşmasın", "30 sn, kendiliğinden durur"], min: 30, max: 30, auto: 30,
+    texts: ["room"] },
+};
+const TEXTS = {
+  m3: ["Metin 3", "Küçük bir kasabada, denizin kenarında eski bir fener vardı. Fenerin bekçisi Hüseyin Bey her akşam güneş batarken yüz on sekiz basamağı tek tek çıkardı. Elinde bir termos çay, cebinde de buruşmuş bir harita olurdu. Fırtınalı gecelerde dalgalar kayalara öyle sert çarpardı ki camlar titrerdi. Bir gece telsizden cızırtılı bir ses duydu: \"Yardım edin, motorumuz durdu!\" Hüseyin Bey hemen ışığı çevirdi, gemiye yolu gösterdi ve sahil güvenliği aradı. Sabaha karşı balıkçılar sağ salim limana döndü. Kasaba halkı ona teşekkür etmek için börek, baklava ve taze ekmek getirdi. Hüseyin Bey ise utangaç bir şekilde omuz silkti: \"Ben sadece ışığı yaktım,\" dedi. O günden beri çocuklar fenere \"umudun evi\" diyor."],
+  m4: ["Metin 4", "Telefonum çaldı, arayan kuzenim Zeynep'ti. \"Yarınki doğum günü partisi için yol tarifine ihtiyacım var,\" dedi. Anlattım: metrodan çıkınca sağa dön, eczanenin önünden geç, ikinci ışıklardan sola sap. Mavi kapılı, beş katlı binanın üçüncü katı. Zil bozuk, o yüzden kapıyı iki kez tıklat. \"Peki ne getireyim?\" diye sordu. Pasta hazır, dedim, sen meyve suyu ve biraz kurabiye al. Saat altıda başlıyoruz, ama erken gelirsen balonları şişirmeme yardım edebilirsin. Zeynep güldü: \"Geçen sefer yirmi balonu tek başıma şişirmiştim, unuttun mu?\" Unutmadım tabii. Bu kez pompa aldım, söz veriyorum. Telefonu kapattıktan sonra listeye baktım: mumlar, tabaklar, peçeteler, bir de müzik. Her şey neredeyse tamamdı."],
+  m5: ["Metin 5", "Sevgili dedeciğim, bu mektubu sana okuldaki son dersten sonra yazıyorum. Bugün öğretmenimiz bize gelecekte hangi mesleği seçmek istediğimizi sordu. Ben hiç düşünmeden mühendis dedim, çünkü sen bana küçükken bozuk radyoları nasıl tamir ettiğini göstermiştin. Hatırlıyor musun, o eski radyodan ilk ses geldiğinde ikimiz de sevinçten zıplamıştık? Şimdi bilgisayarlara sesleri tanımayı öğretiyorum. Biraz garip ama çok heyecanlı. Annem yaz tatilinde köye geleceğimizi söyledi. Bahçedeki erik ağacı bu yıl meyve verdi mi? Kuzular büyüdü mü? Seninle yine sabah erkenden balığa gitmek, gölün kıyısında çay içmek istiyorum. Kendine iyi bak, ilaçlarını unutma. Seni çok özledim. Kocaman sevgilerle, torunun."],
+  free2: ["Sonra serbest konuş", "Günün nasıl geçti? Sevdiğin bir film hangisi, neden seviyorsun? Süre 2 dakikayı geçene kadar devam et."],
+  room: ["Oda sesi", "Ofiste kimse konuşmasın, laptop her zamanki yerinde dursun. Başlat'a bas ve 30 saniye sessizce bekle."],
+};
+
+const $ = (id) => document.getElementById(id);
+let ctx, stream, node, chunks = [], recording = false, startAt = 0, tick, wavBlob = null;
+
+function slug(s) {
+  const map = { ç: "c", ğ: "g", ı: "i", ö: "o", ş: "s", ü: "u", â: "a", î: "i", û: "u" };
+  return s.toLocaleLowerCase("tr").replace(/[çğıöşüâîû]/g, (c) => map[c])
+    .replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32);
+}
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+function say(text, kind = "") { $("msg").textContent = text; $("msg").className = "msg " + kind; }
+
+function renderPlan() {
+  const t = $("target").value, p = PLANS[t];
+  $("plan").innerHTML = p.chips.map((c) => `<span class="chip">${c}</span>`).join("");
+  $("texts").innerHTML = p.texts.map((k) => `<h3>${TEXTS[k][0]}</h3><p>${TEXTS[k][1]}</p>`).join("");
+  $("goal").textContent = p.auto ? "30 sn" : `hedef ${fmt(p.min)}–${fmt(p.max)}`;
+  $("person").disabled = t === "ofis_laptop";
+  renderFolder();
+}
+function renderFolder() {
+  const t = $("target").value, s = slug($("person").value);
+  $("folder").innerHTML = t === "ofis_laptop" ? "Kaydedilecek: <code>oda_sesi/ofis_laptop.wav</code>"
+    : s ? `Kaydedilecek: <code>dataset/${s}/${t}.wav</code>` : "Klasör adı demoda görünecek isim olur.";
+}
+
+async function start() {
+  if ($("target").value !== "ofis_laptop" && !slug($("person").value)) return say("Önce kişinin adını yaz.", "err");
+  try {
+    // Eğitim kayıtları ham olmalı: tarayıcının ses işleme özellikleri kapalı
+    stream = await navigator.mediaDevices.getUserMedia({ audio: {
+      echoCancellation: false, noiseSuppression: false, autoGainControl: false, channelCount: 1 } });
+  } catch (e) {
+    return say("Mikrofona erişilemedi. Lütfen tarayıcıda izin ver.", "err");
+  }
+  ctx = new AudioContext();
+  const worklet = `registerProcessor("rec", class extends AudioWorkletProcessor {
+    process(inputs) { const ch = inputs[0][0]; if (ch) this.port.postMessage(ch.slice(0)); return true; } });`;
+  await ctx.audioWorklet.addModule(URL.createObjectURL(new Blob([worklet], { type: "application/javascript" })));
+  node = new AudioWorkletNode(ctx, "rec");
+  chunks = [];
+  let peak = 0, clipped = false;
+  node.port.onmessage = (e) => {
+    chunks.push(e.data);
+    for (const v of e.data) { const a = Math.abs(v); if (a > peak) peak = a; if (a >= 0.99) clipped = true; }
+  };
+  ctx.createMediaStreamSource(stream).connect(node);
+  recording = true; startAt = performance.now(); wavBlob = null;
+  $("preview").style.display = "none";
+  $("recBtn").textContent = "Durdur"; $("recBtn").classList.add("on");
+  $("target").disabled = $("person").disabled = true;
+  say("Kaydediliyor…");
+  const p = PLANS[$("target").value];
+  tick = setInterval(() => {
+    const sec = (performance.now() - startAt) / 1000;
+    $("timer").textContent = fmt(sec);
+    $("level").style.width = Math.min(100, peak * 100) + "%";
+    $("level").classList.toggle("hot", peak >= 0.99);
+    if (clipped) say("Ses patlıyor (çok yüksek). Mikrofondan biraz uzaklaş ya da daha alçak konuş.", "warn");
+    peak *= 0.6;
+    if (p.auto && sec >= p.auto) stop();
+  }, 100);
+}
+
+function stop() {
+  recording = false; clearInterval(tick);
+  stream.getTracks().forEach((t) => t.stop());
+  const rate = ctx.sampleRate;
+  ctx.close();
+  $("recBtn").textContent = "Başlat"; $("recBtn").classList.remove("on");
+  $("target").disabled = false; renderPlan();
+  $("level").style.width = "0";
+  const len = chunks.reduce((n, c) => n + c.length, 0);
+  wavBlob = encodeWav(chunks, len, rate);
+  $("player").src = URL.createObjectURL(wavBlob);
+  $("preview").style.display = "block";
+  const p = PLANS[$("target").value], sec = len / rate;
+  if (sec < p.min - 5) say(`Kayıt ${fmt(sec)} sürdü, hedef en az ${fmt(p.min)}. Dinle; istersen yeniden çek.`, "warn");
+  else say(`Kayıt ${fmt(sec)}. Başını dinle, sonra Kaydet'e bas.`);
+}
+
+function encodeWav(parts, len, rate) {
+  const buf = new ArrayBuffer(44 + len * 2), v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF"); v.setUint32(4, 36 + len * 2, true); str(8, "WAVE"); str(12, "fmt ");
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, "data"); v.setUint32(40, len * 2, true);
+  let o = 44;
+  for (const c of parts) for (const s of c) { v.setInt16(o, Math.max(-1, Math.min(1, s)) * 0x7fff, true); o += 2; }
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+async function save(overwrite = false) {
+  const t = $("target").value, person = slug($("person").value);
+  $("saveBtn").disabled = true;
+  try {
+    const r = await fetch(`api/save?target=${t}&person=${person}${overwrite ? "&overwrite=1" : ""}`,
+      { method: "POST", body: wavBlob });
+    const j = await r.json();
+    if (r.status === 409) {
+      if (confirm(`${j.path} zaten var. Üzerine yazılsın mı?`)) return save(true);
+      return say("Kaydedilmedi; eski dosya duruyor.", "warn");
+    }
+    if (!r.ok) return say("Kaydedilemedi: " + j.error, "err");
+    say(`Kaydedildi: ${j.path} (${fmt(j.sec)})`, "ok");
+    $("preview").style.display = "none"; wavBlob = null;
+    refresh();
+  } catch (e) {
+    say("Sunucuya ulaşılamadı. kayit.py çalışıyor mu?", "err");
+  } finally { $("saveBtn").disabled = false; }
+}
+
+async function refresh() {
+  const r = await fetch("api/status"), s = await r.json();
+  $("people").innerHTML = s.people.map((p) => `<option value="${p.person}">`).join("");
+  if (!s.people.length) $("tbody").innerHTML = `<tr><td colspan="6" class="n">Henüz kayıt yok</td></tr>`;
+  else $("tbody").innerHTML = s.people.map((p) => {
+    const cells = [1, 2, 3, 4].map((n) => {
+      const f = p.files.filter((x) => x.name.startsWith(`oturum${n}_`));
+      return f.length ? `<td class="c y" title="${f.map((x) => x.name).join(", ")}">${fmt(f.reduce((a, x) => a + x.sec, 0))}</td>`
+        : `<td class="c n">–</td>`;
+    }).join("");
+    const total = p.files.reduce((a, x) => a + x.sec, 0);
+    const sessions = [1, 2, 3, 4].filter((n) => p.files.some((x) => x.name.startsWith(`oturum${n}_`))).length;
+    const okay = sessions === 4 && total >= 480;
+    return `<tr><td>${p.person}</td>${cells}<td class="${okay ? "y" : "bad"}">${fmt(total)}</td></tr>`;
+  }).join("");
+  const room = ["ofis_telefon", "ofis_laptop"].map((n) => {
+    const f = s.room.find((x) => x.name.startsWith(n));
+    return `${n}: ${f ? "✓ " + fmt(f.sec) : "yok"}`;
+  });
+  $("room").textContent = "Oda sesi — " + room.join(" · ");
+}
+
+$("recBtn").onclick = () => (recording ? stop() : start());
+$("saveBtn").onclick = () => save();
+$("discardBtn").onclick = () => { wavBlob = null; $("preview").style.display = "none"; say(""); $("timer").textContent = "0:00"; };
+$("target").onchange = renderPlan;
+$("person").oninput = renderFolder;
+window.addEventListener("beforeunload", (e) => { if (recording || wavBlob) e.preventDefault(); });
+renderPlan(); refresh();
+</script>
+</body>
+</html>
