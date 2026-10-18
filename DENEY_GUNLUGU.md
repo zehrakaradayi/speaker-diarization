@@ -18,6 +18,26 @@ Kararlar ve sapmalar:
 - Zehra'nın paylaşılan klasöründeki, Onur'un oturum 3 kaydının kopyası olan dosya silindi; veriye girmedi.
 
 ## Aşama 2 — Data Cleaning
+Script: `hazirla.py` (her çalıştırmada `data/` baştan üretilir, seed 42).
+
+- **Tek format:** her kayıt ffmpeg ile 16 kHz mono'ya çevrildi.
+- **Sessizlik:** Silero VAD (min sessizlik 300 ms, 60 ms pay); konuşma bölümleri birleştirildi. Ham sürenin %80–95'i konuşma çıktı.
+- **Seviye:** her 2 sn parça -20 dBFS RMS'e eşitlendi, sonra [-1, 1]'e kırpıldı. Bu, `web_export` dosyasının tarayıcıda her pencereye uyguladığı kuralın aynısı; eğitim ve canlı kullanım aynı sesi görür.
+- **Parçalar:** konuşma örtüşmesiz 2 sn parçalara bölündü, sondaki 2 sn'den kısa kalan atıldı.
+- **Bölme:** oturum 1–2 train, 4 validation, 3 test. Bir kaydın tüm parçaları tek bölümde.
+- **Augmentation (sadece train):** temiz + `gurultu` (oda sesi, 5–20 dB SNR) + `yanki` (sentetik oda yankısı, RT60 0,2–0,7 sn) + `seviye` (parça içinde yavaşça değişen ±8 dB kazanç). Seviye için sabit kazanç yerine zarf kullanıldı, çünkü sabit kazanç pencere normalizasyonunda tamamen silinirdi. Hız/perde değişikliği yok.
+- **Sahte sohbetler:** sadece test (oturum 3) konuşmasından 2–6 sn sıralar, art arda aynı kişi yok, aralarda 0,3–1 sn; sohbetin tamamının altında laptop oda sesi. 20 × 60 sn, `data/sohbetler/sohbet_XX.rttm` + `hepsi.rttm`. Test konuşması kişi başı ~2 dk olduğu için sohbetler aynı test sesini farklı yerlerden tekrar kullanıyor. Silero VAD'ın bu sohbetlerde RTTM'e göre konuşma tespiti hatası %6,2.
+
+| Kişi | Train (temiz) | Train (+3 aug) | Val | Test |
+|---|---|---|---|---|
+| cem | 53 | 212 | 0 | 53 |
+| elif | 102 | 408 | 50 | 50 |
+| onur | 109 | 436 | 72 | 57 |
+| zehra | 125 | 500 | 59 | 48 |
+
+Gözlemler:
+- **Cem:** oturum 1 ve 4 gelmediği için train'i diğerlerinin yarısı kadar, validation'ı hiç yok. Telefon kayıtları gelince `hazirla.py` yeniden çalıştırılacak.
+- **Onur'un spektrogramı:** 3,5 kHz üstünde kara (boş) bantlar var. iPad'in AAC sıkıştırması yüksek frekansları atıyor. Diğer üç kişide bu yok. Model Onur'u bu "kara bant" izinden tanımayı öğrenebilir. Aşama 3'te buna karşı önlem konuşulacak (ör. herkese rastgele alçak geçiren filtre / codec augmentation).
 
 ## Aşama 3 — Model Seçimi
 - Model A (sıfırdan CNN) mimarisi:
