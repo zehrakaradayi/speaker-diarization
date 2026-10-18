@@ -40,9 +40,37 @@ Gözlemler:
 - **Onur'un spektrogramı:** 3,5 kHz üstünde kara (boş) bantlar var. iPad'in AAC sıkıştırması yüksek frekansları atıyor. Diğer üç kişide bu yok. Model Onur'u bu "kara bant" izinden tanımayı öğrenebilir. Aşama 3'te buna karşı önlem konuşulacak (ör. herkese rastgele alçak geçiren filtre / codec augmentation).
 
 ## Aşama 3 — Model Seçimi
-- Model A (sıfırdan CNN) mimarisi:
-- Model B (ECAPA + sınıflandırıcı) planı:
-- Tahminim:
+Veri: 4 kişi, 439 benzersiz train parçası (augmentation'la 1.756), 212 val, 208 test parçası. CPU: 48 vCPU, GPU yok.
+
+### Model A — sıfırdan CNN (onaylanan: orta boy, ~135 bin parametre)
+Girdi: log-mel spektrogram, `MelSpectrogram(16000, n_fft=400, hop_length=160, n_mels=64)` → `log(m + 1e-6)` → 1 × 64 × 201.
+
+| Katman | Yapı | Çıkış |
+|---|---|---|
+| Blok 1 | Conv 3×3 (1→16) → BatchNorm → ReLU → MaxPool 2×2 | 16 × 32 × 100 |
+| Blok 2 | Conv 3×3 (16→32) → BatchNorm → ReLU → MaxPool | 32 × 16 × 50 |
+| Blok 3 | Conv 3×3 (32→64) → BatchNorm → ReLU → MaxPool | 64 × 8 × 25 |
+| Blok 4 | Conv 3×3 (64→64) → BatchNorm → ReLU → MaxPool | 64 × 4 × 12 |
+| Blok 5 | Conv 3×3 (64→128) → BatchNorm → ReLU → MaxPool | 128 × 2 × 6 |
+| Sınıflandırıcı | AdaptiveAvgPool (global average pooling) → Flatten → Dropout 0,3 → Linear 128→4 | 4 |
+
+- Tek `nn.Sequential`; ilk 5 eleman blok (canlı panel bunu bekliyor), sınıflandırıcı ayrı bir Sequential'a sarılmadı.
+- Eğitim: AdamW lr 1e-3, batch 64, ~30 epoch, en iyi validation accuracy'li epoch saklanır. `torch.set_num_threads(48)`, `num_workers=4`.
+- Neden bu boy: 246 bin parametrelik büyük sürüm bu kadar az veride ezberleme riski taşır; 62 bin parametrelik küçük sürüm ince ses farklarını kaçırabilir.
+
+### Model B — pretrained ECAPA + sınıflandırıcı
+- `snapshot_download("speechbrain/spkrec-ecapa-voxceleb")` → o klasörden `EncoderClassifier` yüklenir, tamamen dondurulur.
+- Her parçanın (train'in 4 kopyası, val, test) 192 sayılık embedding'i bir kez hesaplanıp kaydedilir.
+- Sınıflandırıcı: L2-normalize edilmiş embedding → Linear 192→4 (772 parametre). Saniyeler içinde eğitilir. Web'e giderse `export_model_b(..., l2_normalize_embedding=True)`.
+
+### Adil karşılaştırma
+İki model aynı train/val/test parçalarıyla ve aynı augmentation kopyalarıyla eğitilir; SpecAugment gibi ek augmentation hiçbirine eklenmez. DER için ikisi de aynı VAD'ı ve aynı pencereyi (2 sn, 0,5 sn kaydırma) kullanır.
+
+### Onur'un iPad izi
+Alçak geçiren filtre augmentation'ı önerildi, eklenmemesine karar verdim; veri olduğu gibi kalıyor. Etkisi Aşama 4'te karışıklık matrisinde (Onur satırı/sütunu) ve Aşama 5'te laptop mikrofonuyla canlı testte kontrol edilecek.
+
+### Tahminim
+**Model B az farkla kazanır.** Pretraining fark yaratır ama kişi sayısı az (4) ve sesler ayrışık olduğu için sıfırdan CNN de iyi öğrenir; DER farkının birkaç puan olmasını bekliyorum.
 
 ## Aşama 4 — Training ve DER Karşılaştırma
 
