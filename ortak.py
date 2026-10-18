@@ -139,15 +139,16 @@ def windows_for(wav: np.ndarray, regions) -> tuple[np.ndarray, list[tuple[int, i
     return (np.stack(wins) if wins else np.zeros((0, WIN), np.float32)), meta
 
 
-def diarize(wav: np.ndarray, predicts: dict, names: list[str], regions=None) -> dict:
+def diarize_detailed(wav: np.ndarray, predicts: dict, n_classes: int, regions=None) -> dict:
     """wav: 16 kHz mono float32. predicts: {"A": fn, "B": fn}, fn(pencereler [N, 32000]) → olasılık [N, K].
-    Her model için: [(başlangıç sn, bitiş sn, isim, güven), ...]. Her 0,5 sn'lik dilimin kişisi, o dilimin
-    üstüne düşen pencerelerin olasılık ortalamasıyla seçilir; aynı kişinin art arda dilimleri birleşir."""
+    Her 0,5 sn'lik dilimin kişisi, o dilimin üstüne düşen pencerelerin olasılık ortalamasıyla seçilir; aynı kişinin
+    art arda dilimleri birleşir. Her model için: segments = [{start, end (örnek), k, p (ortalama olasılıklar)}],
+    window_pred = her pencerenin tahmini (Gradio'daki canlı skor bunu sayar)."""
     regions = speech_regions(wav) if regions is None else regions
     wins, meta = windows_for(wav, regions)
     out = {}
     for key, fn in predicts.items():
-        probs = fn(wins) if len(wins) else np.zeros((0, len(names)))
+        probs = fn(wins) if len(wins) else np.zeros((0, n_classes))
         segs = []
         for r, (s, e) in enumerate(regions):
             idx = [i for i, m in enumerate(meta) if m[0] == r]
@@ -155,15 +156,24 @@ def diarize(wav: np.ndarray, predicts: dict, names: list[str], regions=None) -> 
                 fe = min(fs + HOP, e)
                 cover = [i for i in idx if meta[i][1] < fe and meta[i][2] > fs]
                 p = probs[cover].mean(0)
-                k, conf = int(p.argmax()), float(p.max())
-                if segs and segs[-1][2] == names[k] and abs(segs[-1][1] - fs / SR) < 1e-6:
-                    a, _, who, cs, dur = segs[-1]
-                    d = (fe - fs) / SR
-                    segs[-1] = (a, fe / SR, who, cs + conf * d, dur + d)
+                k = int(p.argmax())
+                if segs and segs[-1]["k"] == k and segs[-1]["end"] == fs:
+                    segs[-1]["end"] = fe
+                    segs[-1]["ps"].append((p, fe - fs))
                 else:
-                    segs.append((fs / SR, fe / SR, names[k], conf * (fe - fs) / SR, (fe - fs) / SR))
-        out[key] = [(a, b, who, cs / dur) for a, b, who, cs, dur in segs]
+                    segs.append({"k": k, "start": fs, "end": fe, "ps": [(p, fe - fs)]})
+        for seg in segs:  # bölümün olasılığı = dilimlerin süreyle ağırlıklı ortalaması
+            ps = seg.pop("ps")
+            seg["p"] = sum(p * n for p, n in ps) / sum(n for _, n in ps)
+        out[key] = {"segments": segs, "window_pred": probs.argmax(1)}
     return out
+
+
+def diarize(wav: np.ndarray, predicts: dict, names: list[str], regions=None) -> dict:
+    """Her model için: [(başlangıç sn, bitiş sn, isim, güven), ...] (notebook'taki DER ve çizelgeler için)."""
+    d = diarize_detailed(wav, predicts, len(names), regions)
+    return {key: [(s["start"] / SR, s["end"] / SR, names[s["k"]], float(s["p"][s["k"]])) for s in r["segments"]]
+            for key, r in d.items()}
 
 
 def to_annotation(segs, uri: str = "x") -> Annotation:
