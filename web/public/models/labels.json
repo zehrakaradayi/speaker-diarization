@@ -1,0 +1,27 @@
+{
+ "labels": [
+  "cem",
+  "elif",
+  "onur",
+  "zehra"
+ ],
+ "sample_rate": 16000,
+ "window_samples": 32000,
+ "hop_samples": 8000,
+ "input": "waveform",
+ "outputs": [
+  "probs",
+  "embedding"
+ ],
+ "preprocess": "mono 16 kHz float32 in [-1,1]; each 2 s window RMS-normalised to -20 dBFS then clipped",
+ "files": {
+  "int8": "model_b.int8.onnx"
+ },
+ "model": {
+  "name": "ECAPA (pretrained) + sınıflandırıcı",
+  "precision": "int8",
+  "der": 0.0843,
+  "test_acc": 1.0,
+  "int8_agree_pt": 1.0
+ }
+}

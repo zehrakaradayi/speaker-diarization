@@ -22,3 +22,7 @@ node_modules/
 .next/
 .vercel/
 .DS_Store
+
+# Node.js (proje içine kurulu) ve tam boy ONNX dışa aktarımları (84 MB fp32 GitHub için büyük)
+.node/
+export/

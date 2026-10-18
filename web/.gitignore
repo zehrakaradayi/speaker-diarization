@@ -1,0 +1,8 @@
+node_modules/
+.next/
+.vercel/
+next-env.d.ts
+*.tsbuildinfo
+# build öncesi node_modules'tan kopyalanır (scripts/copy-assets.mjs)
+public/ort/
+public/vad/
