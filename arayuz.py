@@ -4,7 +4,8 @@ Konsept "dövüş gecesi": iki model iki köşede (A turuncu, B mavi), zaman çi
 canlı skor bir skorbord. Model ne kadar eminse bölüm o kadar dolu; %60'ın altı taralı çizilir.
 İki şeridin arasındaki "anlaşma şeridi" modellerin farklı kişi dediği anları kırmızıyla gösterir.
 
-app.py'deki fonksiyonlarla aynı imzalar: status_html, timeline_html, now_html, score_html.
+app.py mantığı (modeller, diarization, canlı skor) çalıştırır; görünüş için bu dosyadaki status_html,
+timeline_html, now_html, score_html, empty_timeline_html parçalarını ve build() yerleşimini kullanır.
 """
 
 import html
