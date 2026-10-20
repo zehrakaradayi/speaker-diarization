@@ -1,5 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { Geist, Instrument_Serif } from "next/font/google";
 import "./globals.css";
+
+// Fontlar build sırasında indirilip siteyle birlikte sunulur: COEP (require-corp) dış CSS'i engellerdi
+const geist = Geist({ subsets: ["latin", "latin-ext"], variable: "--font-geist" });
+const serif = Instrument_Serif({ subsets: ["latin", "latin-ext"], weight: "400", style: "italic", variable: "--font-serif" });
 
 export const metadata: Metadata = {
   title: "Kim Konuşuyor?",
@@ -18,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className={`${geist.variable} ${serif.variable}`}>
       <body>{children}</body>
     </html>
   );

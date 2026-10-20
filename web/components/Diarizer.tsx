@@ -198,7 +198,7 @@ export default function Diarizer() {
       </div>
 
       {info && (
-        <aside className="card">
+        <aside className="card" id="model">
           <div className="eyebrow">MODEL</div>
           <div className="card-grid">
             <div><small>Kullanılan model</small><b>{info.model.name}</b></div>
